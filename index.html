@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>داشبورد کیفیت - شرکت پویانوین قطعه جی</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+@font-face { font-family: 'BNazanin'; src: local('B Nazanin'), local('BNazanin'); }
+:root {
+    --bg-main: #f0f4f8; --bg-card: #ffffff; --primary: #0d3b66; --accent: #c9a227;
+    --text-main: #1a2a44; --border: #d0d7e2;
+}
+[data-theme="dark"] {
+    --bg-main: #0f1724; --bg-card: #1a2332; --primary: #4a90d9;
+    --text-main: #e4e9f2; --border: #2d3748;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'BNazanin', 'Tahoma', serif; background: var(--bg-main); color: var(--text-main); line-height: 1.8; transition: 0.3s; }
+.english { font-family: 'Times New Roman', Times, serif; }
+
+header { background: linear-gradient(135deg, var(--primary), #1e5a8e); color: #fff; padding: 25px; text-align: center; border-bottom: 4px solid var(--accent); }
+header h1 { font-size: 28px; margin-bottom: 10px; }
+.header-controls { display: flex; justify-content: center; gap: 10px; margin-top: 15px; }
+.btn-icon { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-family: inherit; }
+.btn-icon:hover { background: rgba(255,255,255,0.3); }
+
+.container { max-width: 1400px; margin: 20px auto; padding: 0 20px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; background: var(--bg-card); padding: 8px; border-radius: 8px 8px 0 0; border-bottom: 3px solid var(--accent); }
+.tab-btn { padding: 10px 16px; background: #e8edf4; border: 1px solid var(--border); border-radius: 5px 5px 0 0; cursor: pointer; font-family: inherit; color: var(--text-main); }
+.tab-btn.active { background: var(--primary); color: #fff; border-color: transparent; }
+.tab-content { background: var(--bg-card); border: 1px solid var(--border); border-top: none; border-radius: 0 0 8px 8px; padding: 20px; min-height: 500px; }
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+.sub-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+.sub-tab-btn { padding: 6px 12px; background: transparent; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-family: inherit; }
+.sub-tab-btn.active { background: var(--primary); color: #fff; border-color: transparent; }
+
+.chart-wrapper { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+.chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid var(--accent); flex-wrap: wrap; gap: 10px; }
+.chart-title { font-size: 18px; color: var(--primary); font-weight: bold; }
+
+.target-accept-display { display: flex; gap: 10px; flex-wrap: wrap; }
+.badge { padding: 4px 12px; border-radius: 15px; font-size: 13px; font-weight: bold; font-family: 'Times New Roman', serif; direction: ltr; }
+.badge-target { background: #e3f2fd; color: #0d3b66; border: 1px solid #0d3b66; }
+.badge-accept { background: #ffebee; color: #c62828; border: 1px solid #c62828; }
+
+.chart-container { position: relative; height: 450px; margin-bottom: 10px; }
+.loading { text-align: center; padding: 50px; font-size: 18px; color: var(--primary); }
+.error-msg { text-align: center; padding: 50px; color: #c62828; background: #ffebee; border-radius: 8px; }
+
+footer { background: var(--primary); color: #fff; padding: 20px; text-align: center; margin-top: 40px; border-top: 4px solid var(--accent); }
+footer a { color: var(--accent); text-decoration: none; font-family: 'Times New Roman', serif; }
+
+@media (max-width: 768px) {
+    .chart-container { height: 350px; }
+    .tabs { justify-content: center; }
+}
+</style>
+</head>
+<body>
+
+<header>
+    <h1>داشبورد کیفیت شرکت پویانوین قطعه جی <span class="english">| Ezam Automotive Parts Group</span></h1>
+    <div class="header-controls">
+        <button class="btn-icon" onclick="toggleTheme()">🌓 تغییر تم</button>
+        <button class="btn-icon" onclick="forceReload()">🔄 به‌روزرسانی داده‌ها</button>
+    </div>
+</header>
+
+<div class="container">
+    <div id="loading" class="loading">⏳ در حال بارگذاری داده‌ها از data.json...</div>
+    <div id="error" class="error-msg" style="display:none;"></div>
+    
+    <div id="tabsContainer" class="tabs" style="display:none;"></div>
+    <div id="tabContent" class="tab-content" style="display:none;"></div>
+</div>
+
+<footer>
+    <p>گردآورنده: واحد تضمین کیفیت | Copyright © <span class="english">Abbas Sadeghi</span></p>
+    <p>ارتباط: <a href="mailto:1abbassdgh@gmail.com">1abbassdgh@gmail.com</a></p>
+</footer>
+
+<script>
+const SHEET_MAPPING = {
+    'internal-total': { sheet: 'مجموع پویانوین', title: 'مجموع ضایعات ماشینکاری داخلی', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'internal-bush': { sheet: 'بوش پویانوین', title: 'ضایعات گروه محصول بوش', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'internal-disk': { sheet: 'دیسک و کاسه پویانوین', title: 'ضایعات گروه محصول دیسک و کاسه', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'internal-bracket': { sheet: 'براکت پویانوین', title: 'ضایعات گروه محصول براکت', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'internal-cylinder': { sheet: 'سرسیلندر پویانوین', title: 'ضایعات گروه محصول سرسیلندر', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'rework-total': { sheet: 'مجموع دوباره کاری پویانوین', title: 'مجموع دوباره کاری داخلی', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'rework-bush': { sheet: 'دوباره کاری بوش', title: 'دوباره‌کاری گروه محصول بوش', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'rework-disk': { sheet: 'دوباره کاری دیسک و کاسه', title: 'دوباره‌کاری گروه محصول دیسک و کاسه', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'rework-bracket': { sheet: 'دوباره کاری براکت', title: 'دوباره‌کاری گروه محصول براکت', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'rework-cylinder': { sheet: 'دوباره کاری سرسیلندر', title: 'دوباره‌کاری گروه محصول سرسیلندر', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'rp-total': { sheet: 'مجموع ریخته گری پایاذوب', title: 'مجموع ضایعات ریخته‌گری پایاذوب', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'rp-bush': { sheet: 'بوش پایاذوب', title: 'RECEIVING PPM بوش پایاذوب', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'rp-disk': { sheet: 'دیسک و کاسه پایاذوب', title: 'RECEIVING PPM دیسک و کاسه پایاذوب', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'rp-bracket': { sheet: 'براکت پایاذوب', title: 'RECEIVING PPM براکت پایاذوب', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'rp-cylinder': { sheet: 'سرسیلندر پایاذوب', title: 'RECEIVING PPM سرسیلندر پایاذوب', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'rrp-total': { sheet: 'مجموع پایاذوب رهپویان', title: 'مجموع ضایعات ریخته‌گری کشف‌شده در رهپویان', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'rrp-bush': { sheet: 'بوش پایاذوب در رهپویان', title: 'ضایعات کشف‌شده بوش در رهپویان', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'rrp-disk': { sheet: 'دیسک و کاسه پایاذوب در رهپویان', title: 'ضایعات کشف‌شده دیسک و کاسه در رهپویان', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'rrp-bracket': { sheet: 'براکت پایاذوب در رهپویان', title: 'ضایعات کشف‌شده براکت در رهپویان', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'ext-total': { sheet: 'مجموع برگشت از فروش', title: 'مجموع ضایعات برگشت از فروش', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'ext-bush': { sheet: 'بوش برگشت از فروش پیستون', title: 'PPM بوش (پیستون)', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'ext-disk': { sheet: 'دیسک و کاسه برگشت ازفروش رادمان', title: 'PPM دیسک و کاسه (رادمان)', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'ext-bracket': { sheet: 'براکت برگشت از فروش پایاذوب', title: 'PPM براکت (پایاذوب)', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'ext-cylinder': { sheet: 'سرسیلندر برگشت از فروش رادمان', title: 'PPM سرسیلندر (رادمان)', unit: 'PPM', vKey: ['مقدار PPM ماهانه'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'oee': { sheet: 'OEE', title: 'شاخص OEE ماهانه', unit: '%', vKey: ['درصد OEE ماهانه', 'مقدار'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'oee_av': { sheet: 'شاخص دسترسی OEE', title: 'شاخص دسترسی (Availability)', unit: '%', vKey: ['مقدار شاخص دسترسی'], tKey: [], aKey: [] },
+    'oee_perf': { sheet: 'شاخص عملکرد OEE', title: 'شاخص عملکرد (Performance)', unit: '%', vKey: ['مقدار شاخص عملکرد'], tKey: [], aKey: [] },
+    'oee_qual': { sheet: 'شاخص کیفیت OEE', title: 'شاخص کیفیت (Quality)', unit: '%', vKey: ['مقدار شاخص کیفیت'], tKey: [], aKey: [] },
+    'mtbf-bush': { sheet: 'MTBF بوش', title: 'MTBF بوش', unit: 'HRS', vKey: ['مقدار MTBF'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'mttr-bush': { sheet: 'MTTR بوش', title: 'MTTR بوش', unit: 'MIN', vKey: ['مقدار MTTR'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'mtbf-disk': { sheet: 'MTBFدیسک و کاسه', title: 'MTBF دیسک و کاسه', unit: 'HRS', vKey: ['مقدار MTBF'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'mttr-disk': { sheet: 'MTTRدیسک و کاسه', title: 'MTTR دیسک و کاسه', unit: 'MIN', vKey: ['مقدار MTTR'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'mtbf-cyl': { sheet: 'MTBF سرسیلندر', title: 'MTBF سرسیلندر', unit: 'HRS', vKey: ['مقدار MTBF'], tKey: ['هدف'], aKey: ['حد پذیرش'] },
+    'mttr-cyl': { sheet: 'MTTR سرسیلندر', title: 'MTTR سرسیلندر', unit: 'MIN', vKey: ['مقدار MTTR'], tKey: ['هدف'], aKey: ['حد پذیرش'] }
+};
+
+const TAB_GROUPS = {
+    'internal': ['internal-total', 'internal-bush', 'internal-disk', 'internal-bracket', 'internal-cylinder'],
+    'rework': ['rework-total', 'rework-bush', 'rework-disk', 'rework-bracket', 'rework-cylinder'],
+    'receiving-pz': ['rp-total', 'rp-bush', 'rp-disk', 'rp-bracket', 'rp-cylinder'],
+    'receiving-rp': ['rrp-total', 'rrp-bush', 'rrp-disk', 'rrp-bracket'],
+    'external': ['ext-total', 'ext-bush', 'ext-disk', 'ext-bracket', 'ext-cylinder'],
+    'oee': ['oee', 'oee_av', 'oee_perf', 'oee_qual'],
+    'mtbf': ['mtbf-bush', 'mttr-bush', 'mtbf-disk', 'mttr-disk', 'mtbf-cyl', 'mttr-cyl']
+};
+
+const TAB_NAMES = {
+    'internal': 'TOTAL PPM (ضایعات داخلی)',
+    'rework': 'TOTAL INTERNAL PPM (دوباره‌کاری)',
+    'receiving-pz': 'RECEIVING PPM (پایاذوب کاوه)',
+    'receiving-rp': 'RECEIVING PPM (رهپویان)',
+    'external': 'EXTERNAL PPM (برگشت از فروش)',
+    'oee': 'شاخص OEE',
+    'mtbf': 'MTBF / MTTR'
+};
+
+let globalData = {};
+const charts = {};
+
+function parseValue(val) {
+    if (val === null || val === undefined) return null;
+    if (typeof val === 'string') {
+        val = val.trim();
+        if (val.includes('ERROR') || val === '') return null;
+        const num = parseFloat(val.replace(/[^\d.-]/g, ''));
+        return isNaN(num) ? null : num;
+    }
+    return val;
+}
+
+function findSheet(targetName) {
+    const normalizedTarget = targetName.trim().replace(/\s+/g, ' ');
+    for (const sheetName in globalData) {
+        if (sheetName === 'metadata') continue;
+        const normalizedName = sheetName.trim().replace(/\s+/g, ' ');
+        if (normalizedName === normalizedTarget) return globalData[sheetName];
+    }
+    return null;
+}
+
+function extractChartData(sheetData, config) {
+    if (!sheetData || !sheetData.data) return null;
+    const headers = sheetData.headers;
+    const pIdx = headers.findIndex(h => h && (h.includes('دوره') || h.includes('فصل')));
+    const vIdx = headers.findIndex(h => h && config.vKey.some(k => h.includes(k)));
+    const tIdx = config.tKey.length ? headers.findIndex(h => h && config.tKey.some(k => h.includes(k))) : -1;
+    const aIdx = config.aKey.length ? headers.findIndex(h => h && config.aKey.some(k => h.includes(k))) : -1;
+    
+    const result = { labels: [], values: [], targets: [], accepts: [] };
+    sheetData.data.forEach(row => {
+        const period = row[headers[pIdx]];
+        if (!period) return;
+        result.labels.push(period);
+        result.values.push(vIdx !== -1 ? parseValue(row[headers[vIdx]]) : null);
+        if (tIdx !== -1) result.targets.push(parseValue(row[headers[tIdx]]));
+        if (aIdx !== -1) result.accepts.push(parseValue(row[headers[aIdx]]));
+    });
+    return result;
+}
+
+async function loadDashboardData() {
+    try {
+        const response = await fetch('data.json?v=' + Date.now());
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        globalData = await response.json();
+        buildUI();
+    } catch (error) {
+        document.getElementById('loading').style.display = 'none';
+        const errDiv = document.getElementById('error');
+        errDiv.style.display = 'block';
+        errDiv.innerHTML = `❌ خطا در بارگذاری data.json<br><small>${error.message}</small><br><br>مطمئن شوید فایل data.json در همان پوشه index.html قرار دارد.`;
+    }
+}
+
+function buildUI() {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('tabsContainer').style.display = 'flex';
+    document.getElementById('tabContent').style.display = 'block';
+    
+    const tabsContainer = document.getElementById('tabsContainer');
+    const tabContent = document.getElementById('tabContent');
+    
+    let firstTab = true;
+    for (const [groupId, subIds] of Object.entries(TAB_GROUPS)) {
+        const btn = document.createElement('button');
+        btn.className = 'tab-btn' + (firstTab ? ' active' : '');
+        btn.textContent = TAB_NAMES[groupId];
+        btn.onclick = () => switchTab(groupId, btn);
+        tabsContainer.appendChild(btn);
+        
+        const pane = document.createElement('div');
+        pane.className = 'tab-pane' + (firstTab ? ' active' : '');
+        pane.id = 'pane-' + groupId;
+        
+        const subTabsDiv = document.createElement('div');
+        subTabsDiv.className = 'sub-tabs';
+        
+        let firstSub = true;
+        subIds.forEach(subId => {
+            const config = SHEET_MAPPING[subId];
+            const subBtn = document.createElement('button');
+            subBtn.className = 'sub-tab-btn' + (firstSub ? ' active' : '');
+            subBtn.textContent = config.title;
+            subBtn.onclick = () => switchSubTab(subId, subBtn, groupId);
+            subTabsDiv.appendChild(subBtn);
+            
+            const wrapper = document.createElement('div');
+            wrapper.className = 'chart-wrapper sub-pane' + (firstSub ? ' active' : '');
+            wrapper.id = 'wrapper-' + subId;
+            wrapper.innerHTML = `
+                <div class="chart-header">
+                    <div class="chart-title">${config.title}</div>
+                    <div class="target-accept-display" id="badges-${subId}"></div>
+                </div>
+                <div class="chart-container"><canvas id="chart-${subId}"></canvas></div>
+            `;
+            pane.appendChild(wrapper);
+            firstSub = false;
+        });
+        
+        tabContent.appendChild(pane);
+        firstTab = false;
+    }
+    
+    // Render first chart by default
+    renderChart('internal-total');
+}
+
+function switchTab(groupId, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('pane-' + groupId).classList.add('active');
+}
+
+function switchSubTab(subId, btn, groupId) {
+    const pane = document.getElementById('pane-' + groupId);
+    pane.querySelectorAll('.sub-tab-btn').forEach(b => b.classList.remove('active'));
+    pane.querySelectorAll('.sub-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('wrapper-' + subId).classList.add('active');
+    renderChart(subId);
+}
+
+function renderChart(subId) {
+    const config = SHEET_MAPPING[subId];
+    const sheetData = findSheet(config.sheet);
+    if (!sheetData) return;
+    
+    const data = extractChartData(sheetData, config);
+    if (!data) return;
+    
+    // Update badges
+    const badgesDiv = document.getElementById('badges-' + subId);
+    badgesDiv.innerHTML = '';
+    if (config.tKey.length && data.targets.some(v => v !== null)) {
+        const tVal = data.targets.find(v => v !== null);
+        badgesDiv.innerHTML += `<span class="badge badge-target">هدف: ${tVal} ${config.unit}</span>`;
+    }
+    if (config.aKey.length && data.accepts.some(v => v !== null)) {
+        const aVal = data.accepts.find(v => v !== null);
+        badgesDiv.innerHTML += `<span class="badge badge-accept">حد پذیرش: ${aVal} ${config.unit}</span>`;
+    }
+    
+    // Destroy old chart
+    if (charts[subId]) {
+        charts[subId].destroy();
+    }
+    
+    const ctx = document.getElementById('chart-' + subId).getContext('2d');
+    const datasets = [{
+        label: 'مقدار',
+        data: data.values,
+        borderColor: '#0d3b66',
+        backgroundColor: '#0d3b66',
+        borderWidth: 3,
+        pointRadius: 5,
+        pointHoverRadius: 8,
+        tension: 0.1
+    }];
+    
+    if (config.tKey.length && data.targets.some(v => v !== null)) {
+        datasets.push({
+            label: 'هدف',
+            data: data.targets,
+            borderColor: '#27ae60',
+            borderDash: [8, 5],
+            borderWidth: 2,
+            pointRadius: 0,
+            fill: false
+        });
+    }
+    if (config.aKey.length && data.accepts.some(v => v !== null)) {
+        datasets.push({
+            label: 'حد پذیرش',
+            data: data.accepts,
+            borderColor: '#c0392b',
+            borderDash: [3, 4],
+            borderWidth: 2,
+            pointRadius: 0,
+            fill: false
+        });
+    }
+    
+    charts[subId] = new Chart(ctx, {
+        type: 'line',
+        data: { labels: data.labels, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { font: { family: 'BNazanin, Tahoma', size: 14 } } },
+                tooltip: {
+                    titleFont: { family: 'BNazanin, Tahoma' },
+                    bodyFont: { family: 'Times New Roman', size: 14 },
+                    callbacks: {
+                        label: function(ctx) {
+                            let v = ctx.parsed.y;
+                            if (v === null) return ctx.dataset.label + ': -';
+                            return ctx.dataset.label + ': ' + v + (config.unit === '%' ? '%' : '');
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { ticks: { font: { family: 'BNazanin, Tahoma', size: 12 } }, grid: { color: '#e0e6ed' } },
+                y: { 
+                    ticks: { 
+                        font: { family: 'Times New Roman', size: 13 },
+                        callback: function(v) { return v === null ? '' : v + (config.unit === '%' ? '%' : ''); }
+                    }, 
+                    grid: { color: '#e0e6ed' },
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function toggleTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+}
+
+function forceReload() {
+    location.reload(true);
+}
+
+// Start
+loadDashboardData();
+</script>
+</body>
+</html>
